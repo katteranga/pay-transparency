@@ -279,7 +279,6 @@ function renderData(data) {
       .duration(500)
       .selectAll("path")
       .attr("stroke", (d) => (d.key === "100K" ? "red" : "black"))
-      .attr("stroke-width", (d) => (d.key === "100K" ? 1 : 0.3))
       .style("opacity", (d) => (filter(d) ? 1 : 0))
       .attr("d", (d) => {
         return d3
@@ -291,6 +290,9 @@ function renderData(data) {
             return yScale(yAccess(d));
           })(d.values);
       });
+
+    //   .attr("stroke-width", (d) => (d.key === "100K" ? 1 : 0.3))
+    filterBySearch();
   }
 
   function updateTitle(newTitle) {
@@ -531,13 +533,13 @@ function renderData(data) {
   function filterBySearch() {
     if (filterString === "") {
       graphLines
-        .transition()
+        // .transition()
         .selectAll("path")
         .attr("stroke-width", (d) => (d.key === "100K" ? 1.5 : 0.3));
     } else {
       graphLines
-        .transition()
-        .duration(50)
+        // .transition()
+        // .duration(50)
         .selectAll("path")
         .attr("stroke-width", (d) =>
           d.key.toLowerCase().includes(filterString) || d.key === "100K"
@@ -548,6 +550,14 @@ function renderData(data) {
   }
 
   d3.select("#search").on("keyup", function (d) {
+    filterString = $(this).val().toLowerCase();
+    filterBySearch();
+  });
+  d3.select("#search").on("paste", function (d) {
+    filterString = $(this).val().toLowerCase();
+    filterBySearch();
+  });
+  d3.select("#search").on("change", function (d) {
     filterString = $(this).val().toLowerCase();
     filterBySearch();
   });
