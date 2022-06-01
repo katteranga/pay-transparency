@@ -1,109 +1,49 @@
-google.charts.load("current");
-google.charts.setOnLoadCallback(init);
-
 function init() {
-  var url =
-    "https://docs.google.com/spreadsheets/d/1WDXtZu7r2bH5s6n27ydL2ULu7iUyvlPX0y1xwJufg3Q/edit#gid=0";
-  var query = new google.visualization.Query(url);
-  query.setQuery("select A, B, C, D");
-  query.send(processSheetsData);
-}
-
-function inflationAdjustMetro(elem) {
-  if (
-    (elem.location === "Phoenix" && elem.date.getFullYear() >= 2018) ||
-    (elem.location === "Miami" && elem.date.getFullYear() >= 2012) ||
-    (elem.location === "New York" && elem.date.getFullYear() >= 2012)
-  ) {
-    let previousCPI =
-      inflation_metro[elem.location][elem.date.getFullYear()][
-        elem.date.getMonth()
-      ];
-    let currentCPI = inflation_metro[elem.location][2022][5];
-
-    elem.salary_adjusted_metro = (currentCPI / previousCPI) * elem.salary;
-  }
-}
-
-function inflationAdjustNational(elem) {
-  if (elem.date.getFullYear() >= 2012) {
-    // TODO: include all national inflation data and remove limitation
-    let previousCPI =
-      inflation_national[elem.date.getFullYear()][elem.date.getMonth()];
-    let currentCPI = inflation_national[2022][5];
-
-    elem.salary_adjusted_country = (currentCPI / previousCPI) * elem.salary;
-  }
-}
-
-function processSheetsData(response) {
-  var array = [];
-  var data = response.getDataTable();
-  var columns = data.getNumberOfColumns();
-  var rows = data.getNumberOfRows();
-
-  var prevElem = null; // Used to interpolate inflation-adjusted decreases over time
-  for (var r = 0; r < rows; r++) {
-    var row = [];
-    for (var c = 0; c < columns; c++) {
-      row.push(data.getFormattedValue(r, c));
-    }
-
-    let dateObject = new Date(
-      parseInt(row[2].split("-")[0]),
-      parseInt(row[2].split("-")[1]) - 1, // VERY confusing, Jan = 0, Feb = 1, etc.
-      parseInt(row[2].split("-")[2])
+  fetch("./combinedData.json")
+    .then((response) => response.json())
+    .then((combinedData) =>
+      fetch("./referenceLine100K.json")
+        .then((response) => response.json())
+        .then((referenceData) => processSheetsData(combinedData, referenceData))
     );
+}
 
-    let elem = {
-      id: row[0],
-      interpolated: false,
-      location: row[1],
-      date: dateObject,
-      date_string: row[2],
-      salary: +row[3],
-      salary_adjusted_metro: null,
-      salary_adjusted_country: null,
-    };
-
-    inflationAdjustMetro(elem);
-    inflationAdjustNational(elem);
-
-    if (prevElem != null && elem.id === prevElem.id) {
-      interpolatedElem = { ...prevElem };
-      interpolatedElem.date_string = elem.date_string;
-      interpolatedElem.date = elem.date;
-      interpolatedElem.interpolated = true;
-      inflationAdjustMetro(interpolatedElem);
-      inflationAdjustNational(interpolatedElem);
-      array.push(interpolatedElem);
-    } else if (prevElem != null) {
-      interpolatedElem = { ...prevElem };
-      interpolatedElem.date_string = "2022-05-22";
-      interpolatedElem.date = new Date();
-      interpolatedElem.interpolated = true;
-      inflationAdjustMetro(interpolatedElem);
-      inflationAdjustNational(interpolatedElem);
-      array.push(interpolatedElem);
+function processSheetsData(combinedData, referenceData) {
+  // Interpret all the date strings as JavaScript date objects
+  for (const id in combinedData) {
+    for (let i = 0; i < combinedData[id].values.length; i++) {
+      let current_date_string = combinedData[id].values[i].date_string;
+      combinedData[id].values[i].date = new Date(
+        parseInt(current_date_string.split("-")[0]),
+        parseInt(current_date_string.split("-")[1]) - 1, // VERY confusing, Jan = 0, Feb = 1, etc.
+        parseInt(current_date_string.split("-")[2])
+      );
     }
-
-    array.push(elem);
-    prevElem = elem;
   }
 
-  interpolatedElem = { ...prevElem };
-  interpolatedElem.date_string = "2022-05-22";
-  interpolatedElem.date = new Date();
-  interpolatedElem.interpolated = true;
-  inflationAdjustMetro(interpolatedElem);
-  inflationAdjustNational(interpolatedElem);
-  array.push(interpolatedElem);
+  for (const region in referenceData) {
+    for (let i = 0; i < referenceData[region].length; i++) {
+      let current_date_string = referenceData[region][i].date_string;
+      referenceData[region][i].date = new Date(
+        parseInt(current_date_string.split("-")[0]),
+        parseInt(current_date_string.split("-")[1]) - 1, // VERY confusing, Jan = 0, Feb = 1, etc.
+        parseInt(current_date_string.split("-")[2])
+      );
+    }
+  }
 
-  renderData(array);
+  // interpolatedElem = { ...prevElem };
+  // interpolatedElem.date_string = "2022-05-22";
+  // interpolatedElem.date = new Date();
+  // interpolatedElem.interpolated = true;
+  // inflationAdjustMetro(interpolatedElem);
+  // inflationAdjustNational(interpolatedElem);
+  // array.push(interpolatedElem);
+  renderData(combinedData, referenceData);
   //Phoenix-Mesa-Scottsdale
 }
 
-function renderData(data) {
+function renderData(combinedData, referenceData) {
   const margin = { top: 30, right: 0, bottom: 30, left: 50 };
   const color = "steelblue";
   const height = 400;
@@ -111,69 +51,17 @@ function renderData(data) {
 
   // Getters
   let getSalary = (d) => d.salary;
-  let getAdjustedSalaryMetro = (d) => d.salary_adjusted_metro;
-  let getAdjustedSalaryNational = (d) => d.salary_adjusted_country;
-
-  //   let nonInterpolatedData = data.filter((d) => !d.interpolated);
-  //   let groupedNonInterpolatedData = d3
-  //     .nest()
-  //     .key((d) => d.id)
-  //     .entries(nonInterpolatedData);
+  let getAdjustedSalaryMetro = (d) => d.salary_metro_adjusted;
+  let getAdjustedSalaryNational = (d) => d.salary_national_adjusted;
 
   let getDate = (d) => d.date;
 
   let selectedLine = null;
 
-  //   function onLineClick(d) {
-  //     selectedLine = d;
-  //     updateSelected();
-  //   }
-
-  //   function clearSelectedLine() {
-  //     selectedLine = null;
-  //     updateSelected();
-  //   }
-
-  //   function updateSelected() {
-  //     var allLines = d3.select("svg").selectAll("path");
-  //     if (selectedLine === null) {
-  //       allLines.style("opacity", 1);
-  //     } else {
-  //       allLines
-  //         .filter(function (d) {
-  //           return d === selectedLine;
-  //         })
-  //         .style("opacity", 1);
-
-  //       allLines
-  //         .filter(function (d) {
-  //           return d !== selectedLine;
-  //         })
-  //         .style("opacity", 0.1);
-  //     }
-
-  // var SATM = d3.select("#table-SATM");
-  // var SATV = d3.select("#table-SATV");
-  // var ACT = d3.select("#table-ACT");
-  // var GPA = d3.select("#table-GPA");
-
-  // if (selectedPoint == null) {
-  //   SATM.text("");
-  //   SATV.text("");
-  //   ACT.text("");
-  //   GPA.text("");
-  // } else {
-  //   SATM.text(selectedPoint.SATM);
-  //   SATV.text(selectedPoint.SATV);
-  //   ACT.text(selectedPoint.ACT);
-  //   GPA.text(selectedPoint.GPA);
-  // }
-  //   }
-
   // y Axes
   var salaryScale = d3
     .scaleLinear()
-    .domain([0, d3.max(data, getAdjustedSalaryMetro)]) // TODO: reevaluate zero-aligned min yAxis
+    .domain([0, 120000]) // TODO: reevaluate zero-aligned min yAxis
     .range([height - margin.bottom, margin.top]);
 
   // x Axes
@@ -202,8 +90,6 @@ function renderData(data) {
     .attr("width", width)
     .attr("height", height)
     .attr("fill", color);
-
-  let graphLines = graph.append("g").attr("id", "stepLines");
 
   graph
     .append("g")
@@ -246,62 +132,90 @@ function renderData(data) {
 
   graph.append("g").call(grid);
 
-  var groupedData = d3
-    .nest()
-    .key((d) => d.id)
-    .entries(data);
-
-  for (let i = 0; i < groupedData.length; i++) {
-    groupedData[i].location = groupedData[i].values[0].location;
-  }
-
-  console.log(groupedData);
-
-  graphLines
-    .selectAll("path")
-    .data(groupedData)
-    .enter()
-    .append("path")
-    .style("opacity", 1)
-    .attr("fill", "none")
-    .attr("stroke", "black")
-    .attr("stroke-width", 0.3);
-
-  let filterLocation = "All";
+  let filterLocation = "National";
   let inflationAdjust = false;
   let filterString = "";
 
   graphTitle = d3.select("#graphTitle");
+  graphSubtitle = d3.select("#graphSubtitle");
 
-  function redrawGraphLines(xScale, xAccessor, yScale, yAccess, filter) {
+  d3.select("svg").append("g").attr("id", "graphLines");
+
+  // .selectAll("path")
+  // .data(combinedData);
+
+  console.log([referenceData]);
+  graph
+    .append("g")
+    .attr("id", "referenceLines")
+    .selectAll("path")
+    .data([referenceData])
+    .enter()
+    .append("path")
+    .attr("stroke", "red")
+    .attr("fill", "none")
+    .attr("stroke-width", 1.5)
+    .attr("id", "referenceLine100K");
+  // .attr("id", "referenceLine100K");
+
+  function redrawGraphLines(xScale, xAccessor, yScale, yAccessor, filter) {
+    graphLines = d3
+      .select("#graphLines")
+      .selectAll("path")
+      .data(combinedData.filter(filter));
+
     graphLines
+      .exit()
+      .attr("opacity", 1)
+      .transition()
+      .duration(300)
+      .attr("opacity", 0)
+      .remove();
+
+    graphLines
+      .enter()
+      .append("path")
+      .attr("fill", "none")
+      .attr("stroke", "black")
+      .attr("stroke-width", 0.3)
+      .attr("opacity", 0)
+      // Update
+      .merge(graphLines)
       .transition()
       .duration(500)
-      .selectAll("path")
-      .attr("stroke", (d) => (d.key === "100K" ? "red" : "black"))
-      .style("opacity", (d) => (filter(d) ? 1 : 0))
-      .attr("d", (d) => {
+      .attr("d", (d) =>
+        d3
+          .line()
+          .x((d) => xScale(xAccessor(d)))
+          .y((d) => yScale(yAccessor(d)))(d.values)
+      )
+      .attr("opacity", 1);
+
+    d3.select("#referenceLine100K")
+      .transition()
+      .duration(500)
+      .attr("d", (referenceData) => {
         return d3
           .line()
-          .x((d) => {
-            return xScale(xAccessor(d));
+          .x((d) => xScale(d.date))
+          .y((d) => yScale(inflationAdjust ? d.salary : 100000))(
+          referenceData[filterLocation].filter((d) => {
+            return xScale.domain()[0] <= d.date && d.date <= xScale.domain()[1];
           })
-          .y((d) => {
-            return yScale(yAccess(d));
-          })(d.values);
+        );
       });
 
-    //   .attr("stroke-width", (d) => (d.key === "100K" ? 1 : 0.3))
     filterBySearch();
   }
 
-  function updateTitle(newTitle) {
+  function updateTitle(newTitle, newSubtitle) {
     graphTitle.transition().duration(500).text(newTitle);
+    graphSubtitle.transition().duration(500).text(newSubtitle);
   }
 
   function renderView() {
     switch (filterLocation) {
-      case "All":
+      case "National":
         if (!inflationAdjust) {
           redrawGraphLines(
             dateScaleUnbound,
@@ -310,7 +224,7 @@ function renderData(data) {
             getSalary,
             (d) => true
           );
-          updateTitle("Amex Developer Pay");
+          updateTitle("Amex Developer Pay", "\u00a0");
         } else {
           redrawGraphLines(
             dateScaleUnbound,
@@ -319,9 +233,7 @@ function renderData(data) {
             getAdjustedSalaryNational,
             (d) => true
           );
-          updateTitle(
-            "Amex Developer Pay, adjusted for inflation nationally (April 2022 dollars)"
-          );
+          updateTitle("Amex Developer Pay", "Adjusted for national inflation");
         }
         break;
       case "Miami":
@@ -333,7 +245,7 @@ function renderData(data) {
             getSalary,
             (d) => d.location === "Miami"
           );
-          updateTitle("Amex Developer Pay in Miami");
+          updateTitle("Amex Developer Pay in Miami", "\u00a0");
         } else {
           redrawGraphLines(
             dateScaleUnbound,
@@ -343,7 +255,8 @@ function renderData(data) {
             (d) => d.location === "Miami"
           );
           updateTitle(
-            "Amex Developer Pay in Miami, adjusted for local inflation (April 2022 dollars)"
+            "Amex Developer Pay in Miami",
+            "Adjusted for local inflation"
           );
         }
         break;
@@ -356,7 +269,7 @@ function renderData(data) {
             getSalary,
             (d) => d.location === "New York"
           );
-          updateTitle("Amex Developer Pay in New York");
+          updateTitle("Amex Developer Pay in New York", "\u00a0");
         } else {
           redrawGraphLines(
             dateScaleUnbound,
@@ -366,7 +279,8 @@ function renderData(data) {
             (d) => d.location === "New York"
           );
           updateTitle(
-            "Amex Developer Pay in New York, adjusted for local inflation (April 2022 dollars)"
+            "Amex Developer Pay in New York",
+            "Adjusted for local inflation"
           );
         }
         break;
@@ -379,7 +293,7 @@ function renderData(data) {
             getSalary,
             (d) => d.location === "Phoenix"
           );
-          updateTitle("Amex Developer Pay in Phoenix");
+          updateTitle("Amex Developer Pay in Phoenix", "\u00a0");
         } else {
           redrawGraphLines(
             dateScaleUnbound,
@@ -389,7 +303,8 @@ function renderData(data) {
             (d) => d.location === "Phoenix"
           );
           updateTitle(
-            "Amex Developer Pay in Phoenix, adjusted for local inflation (April 2022 dollars)"
+            "Amex Developer Pay in Phoenix",
+            "Adjusted for local inflation"
           );
         }
         break;
@@ -405,7 +320,7 @@ function renderData(data) {
               d.location !== "Miami" &&
               d.location !== "New York"
           );
-          updateTitle("Amex Developer Pay (Other)");
+          updateTitle("Amex Developer Pay in other cities", "\u00a0");
         } else {
           redrawGraphLines(
             dateScaleUnbound,
@@ -418,7 +333,8 @@ function renderData(data) {
               d.location !== "New York"
           );
           updateTitle(
-            "Amex Developer Pay (Other), adjusted for national inflation (April 2022 dollars)"
+            "Amex Developer Pay in other cities",
+            "Adjusted for national inflation"
           );
         }
         break;
@@ -433,7 +349,7 @@ function renderData(data) {
       text: "All",
       default: true,
       click: function () {
-        filterLocation = "All";
+        filterLocation = "National";
         renderView();
       },
     },
@@ -498,12 +414,15 @@ function renderData(data) {
 
   function makeRadioButtons(buttons, name, title) {
     d3.select("body").append("h6").text(title);
+
     let form = d3
       .select("body")
       .append("form")
       .attr("id", name)
       .attr("class", "btn-group btn-group-toggle")
-      .attr("data-toggle", "buttons")
+      .attr("data-toggle", "buttons");
+
+    buttons = form
       .selectAll("button")
       .data(buttons)
       .enter()
@@ -515,13 +434,12 @@ function renderData(data) {
       .on("click", function (d) {
         return d.click();
       });
-    form
+    buttons
       .append("input")
       .attr("type", "radio")
       .attr("id", function (d) {
         return d.id;
       });
-    form.append("br");
   }
 
   makeRadioButtons(locationButtons, "locationButtons", "Location");
@@ -532,20 +450,18 @@ function renderData(data) {
   );
   function filterBySearch() {
     if (filterString === "") {
-      graphLines
-        // .transition()
+      d3.select("#graphLines")
         .selectAll("path")
-        .attr("stroke-width", (d) => (d.key === "100K" ? 1.5 : 0.3));
+        .attr("stroke-width", (d) => (d.id === "100K" ? 1.5 : 0.3));
     } else {
-      graphLines
-        // .transition()
-        // .duration(50)
+      d3.select("#graphLines")
         .selectAll("path")
-        .attr("stroke-width", (d) =>
-          d.key.toLowerCase().includes(filterString) || d.key === "100K"
+        .attr("stroke-width", (d) => {
+          console.log(d);
+          return d.id.toLowerCase().includes(filterString) || d.id === "100K"
             ? 1.5
-            : 0.1
-        );
+            : 0.1;
+        });
     }
   }
 
@@ -587,32 +503,6 @@ function renderData(data) {
   d3.select("body")
     .append("p")
     .text("The red line is a reference line at $100,000");
-  // var xAxisButtonsList = [
-  //     {
-  //         id: "SATM",
-  //         text: "SATM",
-  //         click: function () {
-  //             scatterPlotOne.transition().duration(3000).selectAll("circle")
-  //                 .attr("cx", function (d) { return cxScale(d.SATM); });
-  //             d3.select("#xAxis").transition().duration(3000)
-  //                 .call(d3.axisBottom(cxScale).ticks(10));
-  //         }
-  //     },
-  //     {
-  //         id: "SAT-cumulative",
-  //         text: "SATM + SATV",
-  //         click: function () {
-  //             scatterPlotOne.transition().duration(3000).selectAll("circle")
-  //                 .attr("cx", function (d) { return scatterPlotOneAlternativeCXScale(d.SATV + d.SATM); });
-  //             d3.select("#xAxis").transition().duration(3000)
-  //                 .call(d3.axisBottom(scatterPlotOneAlternativeCXScale).ticks(10));
-  //         }
-  //     }
-  // ];
-
-  // d3.select("body").append("div").attr("id", "xAxisButtons").selectAll("button")
-  //     .data(xAxisButtonsList).enter().append("button")
-  //     .attr("id",     function (d) { return d.id; })
-  //     .text(          function (d) { return d.text; })
-  //     .on("click",    function (d) { return d.click(); });
 }
+
+init();

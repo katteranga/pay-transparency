@@ -1,0 +1,6 @@
+# Mac/OSX
+.DS_Store
+*.csv
+*.py
+
+pay/
