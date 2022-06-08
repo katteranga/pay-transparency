@@ -32,77 +32,6 @@ function processSheetsData(combinedData, referenceData) {
     }
   }
 
-  // interpolatedElem = { ...prevElem };
-  // interpolatedElem.date_string = "2022-05-22";
-  // interpolatedElem.date = new Date();
-  // interpolatedElem.interpolated = true;
-  // inflationAdjustMetro(interpolatedElem);
-  // inflationAdjustNational(interpolatedElem);
-  // array.push(interpolatedElem);
-  renderData(combinedData, referenceData);
-  //Phoenix-Mesa-Scottsdale
-}
-
-function renderData(combinedData, referenceData) {
-  const margin = { top: 30, right: 0, bottom: 30, left: 50 };
-  const color = "steelblue";
-  const height = 400;
-  const width = 800;
-
-  // Getters
-  let getSalary = (d) => d.salary;
-  let getAdjustedSalaryMetro = (d) => d.salary_metro_adjusted;
-  let getAdjustedSalaryNational = (d) => d.salary_national_adjusted;
-
-  let getDate = (d) => d.date;
-
-  let selectedLine = null;
-
-  // y Axes
-  var salaryScale = d3
-    .scaleLinear()
-    .domain([0, 120000]) // TODO: reevaluate zero-aligned min yAxis
-    .range([height - margin.bottom, margin.top]);
-
-  // x Axes
-  var dateScaleFrom2018 = d3
-    .scaleTime()
-    .domain([new Date(2018, 0, 1), Date.now()])
-    .range([margin.left, width - margin.right]);
-
-  var dateScaleFrom2012 = d3
-    .scaleTime()
-    .domain([new Date(2012, 0, 1), Date.now()])
-    .range([margin.left, width - margin.right]);
-
-  var dateScaleUnbound = d3
-    .scaleTime()
-    // .domain([new Date(2018, 0, 1), new Date(2022, 4, 22)])
-    .domain([new Date(2018, 0, 1), Date.now()])
-    .range([margin.left, width - margin.right]);
-
-  var xAxis = d3.axisBottom(dateScaleUnbound).ticks(d3.timeMonth.every(3));
-  // .tickFormat((d) => (d < d3.timeYear(d) ? d.getFullYear() : null));
-  var yAxis = d3.axisLeft(salaryScale).ticks(10);
-
-  let graph = d3
-    .select("#graph")
-    .attr("width", width)
-    .attr("height", height)
-    .attr("fill", color);
-
-  graph
-    .append("g")
-    .attr("id", "xAxis")
-    .attr("transform", "translate(0, 370)")
-    .call(xAxis);
-
-  graph
-    .append("g")
-    .attr("id", "yAxis")
-    .attr("transform", "translate(50, 0)")
-    .call(yAxis);
-
   var flattenedData = [];
   combinedData.forEach((entry) => {
     entry.values.forEach((payDatum) => {
@@ -118,16 +47,73 @@ function renderData(combinedData, referenceData) {
       });
     });
   });
-  // console.log(flattenedData);
-  // delaunay = d3.Delaunay.from(
-  //   flattenedData,
-  //   (d) => dateScaleUnbound(getDate(d)),
-  //   (d) => salaryScale(getSalary(d))
-  // );
 
-  // console.log(delaunay);
+  renderData(combinedData, referenceData, flattenedData);
+}
 
-  let hover;
+function renderData(combinedData, referenceData, flattenedData) {
+  const margin = { top: 30, right: 0, bottom: 30, left: 50 };
+  const color = "steelblue";
+  const height = 400;
+  const width = 800;
+
+  // Getters
+  let getDate = (d) => d.date;
+
+  let getSalary = (d) => d.salary;
+  let getAdjustedSalaryMetro = (d) => d.salary_metro_adjusted;
+  let getAdjustedSalaryNational = (d) => d.salary_national_adjusted;
+
+  // y Axes
+  var salaryScale = d3
+    .scaleLinear()
+    .domain([0, 150000]) // TODO: reevaluate zero-aligned min yAxis
+    .range([height - margin.bottom, margin.top]);
+
+  // x Axes
+  var dateScaleAll = d3
+    .scaleTime()
+    .domain([
+      new Date(
+        Math.min.apply(
+          null,
+          flattenedData.map((d) => d.date)
+        )
+      ),
+      Date.now(),
+    ])
+    .range([margin.left, width - margin.right]);
+
+  var dateScaleFrom2012 = d3
+    .scaleTime()
+    .domain([new Date(2012, 0, 1), Date.now()])
+    .range([margin.left, width - margin.right]);
+
+  var dateScaleFrom2018 = d3
+    .scaleTime()
+    .domain([new Date(2018, 0, 1), Date.now()])
+    .range([margin.left, width - margin.right]);
+
+  // Make Graph
+  let graph = d3
+    .select("#graph")
+    .attr("width", width)
+    .attr("height", height)
+    .attr("fill", color);
+
+  // Add x axis to graph
+  let xAxis = graph
+    .append("g")
+    .attr("id", "xAxis")
+    .attr("transform", "translate(0, 370)");
+  // .call(xAxis);
+
+  // Add y axis to graph
+  let yAxis = graph
+    .append("g")
+    .attr("id", "yAxis")
+    .attr("transform", "translate(50, 0)");
+  // .call(yAxis);
 
   let highlight = graph
     .append("circle")
@@ -145,9 +131,9 @@ function renderData(combinedData, referenceData) {
   function mousemoved() {
     const [mx, my] = d3.mouse(d3.select(this).node());
 
-    hover = find(mx, my);
+    graphSettings.hover = find(mx, my);
 
-    if (!hover) {
+    if (!graphSettings.hover) {
       highlight.attr("opacity", 0);
       return mouseleft();
     }
@@ -163,29 +149,38 @@ function renderData(combinedData, referenceData) {
       .style("top", `${my + 230}px`)
       .html(
         `<div>
-          <strong>${hover.id}</strong>
+          <strong>${graphSettings.hover.id}</strong>
         </div>
           <div class="flex">
-          <div>${d3.timeFormat("%B %d, %Y")(hover.date)}</div>
-          <div>${d3.format("$.0f")(hover.salary)}</div>
+          <div>${d3.timeFormat("%B %d, %Y")(
+            graphSettings.xAccessor(graphSettings.hover)
+          )}</div>
+          <div>${d3.format("$.0f")(
+            graphSettings.yAccessor(graphSettings.hover)
+          )}</div>
         </div>`
       );
 
     highlight
       .attr("opacity", 1)
-      .attr("cx", dateScaleUnbound(hover.date))
-      .attr("cy", salaryScale(hover.salary));
-    // .html(`<h1>Here</h1>`);
+      .attr(
+        "cx",
+        graphSettings.xScale(graphSettings.xAccessor(graphSettings.hover))
+      )
+      .attr(
+        "cy",
+        graphSettings.yScale(graphSettings.yAccessor(graphSettings.hover))
+      );
   }
 
   find = (mx, my) => {
-    const idx = delaunay.find(mx, my);
+    const idx = graphSettings.delaunay.find(mx, my);
 
     if (idx !== null) {
-      const datum = flattenedData[idx];
+      const datum = graphSettings.filteredData[idx];
       const d = distance(
-        dateScaleUnbound(datum.date),
-        salaryScale(datum.salary),
+        graphSettings.xScale(graphSettings.xAccessor(datum)),
+        graphSettings.yScale(graphSettings.yAccessor(datum)),
         mx,
         my
       );
@@ -206,41 +201,12 @@ function renderData(combinedData, referenceData) {
   mouseleft = () => {
     tooltip.style("display", "none");
   };
+
+  let grid = graph.append("g").attr("id", "grid");
+  grid.append("g").attr("id", "horizontalGridLines");
+  grid.append("g").attr("id", "verticalGridLines");
+
   // Transparent rect for interaction
-
-  grid = (g) => {
-    g.attr("stroke", "currentColor")
-      .attr("stroke-opacity", 0.1)
-      .call((g) =>
-        g
-          .append("g")
-          .selectAll("line")
-          .data(dateScaleUnbound.ticks())
-          .join("line")
-          .attr("x1", (d) => 0.5 + dateScaleUnbound(d))
-          .attr("x2", (d) => 0.5 + dateScaleUnbound(d))
-          .attr("y1", margin.top)
-          .attr("y2", height - margin.bottom)
-      )
-      .call((g) =>
-        g
-          .append("g")
-          .selectAll("line")
-          .data(salaryScale.ticks())
-          .join("line")
-          .attr("y1", (d) => 0.5 + salaryScale(d))
-          .attr("y2", (d) => 0.5 + salaryScale(d))
-          .attr("x1", margin.left)
-          .attr("x2", width - margin.right)
-      );
-  };
-
-  // tooltip = {
-  //   const div = d3.create('div')
-  // }
-
-  graph.append("g").call(grid);
-
   graph
     .append("rect")
     .attr("fill", "transparent")
@@ -249,24 +215,14 @@ function renderData(combinedData, referenceData) {
     .on("mousemove", mousemoved)
     .on("mouseleave", mouseleft);
 
-  let filterLocation = "National";
-  let inflationAdjust = false;
-  let filterString = "";
-
   graphTitle = d3.select("#graphTitle");
   graphSubtitle = d3.select("#graphSubtitle");
 
   d3.select("svg").append("g").attr("id", "graphLines");
 
-  // .selectAll("path")
-  // .data(combinedData);
   tooltip = d3
     .select("#tooltip")
-    // .select("#graph")
-    // .append("div")
-    // .attr("id", "tooltip")
     .style("width", "200px")
-    // .style("height", "200px")
     .style("position", "absolute")
     .style("padding", "8px")
     .style("border", "1px solid #ccc")
@@ -285,19 +241,41 @@ function renderData(combinedData, referenceData) {
     .attr("fill", "none")
     .attr("stroke-width", 1.5)
     .attr("id", "referenceLine100K");
-  // .attr("id", "referenceLine100K");
 
-  function redrawGraphLines(xScale, xAccessor, yScale, yAccessor, filter) {
+  let graphSettings = {
+    filterLocation: "National",
+    inflationAdjust: false,
+    filterString: "",
+
+    hover: null,
+    delaunay: null,
+    filteredData: null,
+
+    filter: null,
+    xScale: null,
+    yScale: null,
+    xAccessor: getDate,
+    yAccessor: null,
+
+    title: "",
+    subtitle: "",
+    tooltipSalary: "",
+  };
+
+  function redrawGraphLines() {
+    graphTitle.transition().duration(500).text(graphSettings.title);
+    graphSubtitle.transition().duration(500).text(graphSettings.subtitle);
+
     graphLines = d3
       .select("#graphLines")
       .selectAll("path")
-      .data(combinedData.filter(filter));
+      .data(combinedData.filter(graphSettings.filter));
 
     graphLines
       .exit()
       .attr("opacity", 1)
       .transition()
-      .duration(300)
+      .duration(500)
       .attr("opacity", 0)
       .remove();
 
@@ -315,8 +293,14 @@ function renderData(combinedData, referenceData) {
       .attr("d", (d) =>
         d3
           .line()
-          .x((d) => xScale(xAccessor(d)))
-          .y((d) => yScale(yAccessor(d)))(d.values)
+          .x((d) => graphSettings.xScale(graphSettings.xAccessor(d)))
+          .y((d) => graphSettings.yScale(graphSettings.yAccessor(d)))(
+          d.values.filter(
+            (d) =>
+              graphSettings.xScale.domain()[0] <= d.date &&
+              d.date <= graphSettings.xScale.domain()[1]
+          )
+        )
       )
       .attr("opacity", 1);
 
@@ -326,148 +310,172 @@ function renderData(combinedData, referenceData) {
       .attr("d", (referenceData) => {
         return d3
           .line()
-          .x((d) => xScale(d.date))
-          .y((d) => yScale(inflationAdjust ? d.salary : 100000))(
-          referenceData[filterLocation].filter((d) => {
-            return xScale.domain()[0] <= d.date && d.date <= xScale.domain()[1];
-          })
+          .x((d) => graphSettings.xScale(d.date))
+          .y((d) =>
+            graphSettings.yScale(
+              graphSettings.inflationAdjust ? d.salary : 100000
+            )
+          )(
+          referenceData[graphSettings.filterLocation].filter(
+            (d) =>
+              graphSettings.xScale.domain()[0] <= d.date &&
+              d.date <= graphSettings.xScale.domain()[1]
+          )
         );
       });
+
+    d3.select("#referenceLine100K").data();
+
+    xAxis.transition(500).call(d3.axisBottom(graphSettings.xScale));
+    // .ticks(d3.timeMonth.every(3)));
+    yAxis.transition(500).call(d3.axisLeft(graphSettings.yScale).ticks(10));
+
+    let horizontalGridLines = d3
+      .select("#horizontalGridLines")
+      .selectAll("line")
+      .data(graphSettings.yScale.ticks());
+
+    let verticalGridLines = d3
+      .select("#verticalGridLines")
+      .selectAll("line")
+      .data(graphSettings.xScale.ticks());
+
+    horizontalGridLines.exit().transition().duration(500).remove();
+
+    horizontalGridLines
+      .enter()
+      .append("line")
+      .attr("class", "horizontalGrid")
+      .attr("x1", margin.left)
+      .attr("x2", width)
+      .attr("fill", "none")
+      .attr("shape-rendering", "crispEdges")
+      .attr("stroke", "black")
+      .attr("stroke-width", "1px")
+      .attr("stroke-opacity", 0.1)
+      // Update
+      .merge(horizontalGridLines)
+      // .transition()
+      // .duration(1000)
+      .attr("y1", (d) => graphSettings.yScale(d))
+      .attr("y2", (d) => graphSettings.yScale(d));
+
+    verticalGridLines.exit().transition().duration(500).remove();
+
+    verticalGridLines
+      .enter()
+      .append("line")
+      .attr("class", "horizontalGrid")
+      .attr("y1", margin.top)
+      .attr("y2", height - margin.bottom)
+      .attr("fill", "none")
+      .attr("shape-rendering", "crispEdges")
+      .attr("stroke", "black")
+      .attr("stroke-width", "1px")
+      .attr("stroke-opacity", 0.1)
+      // Update
+      .merge(verticalGridLines)
+      // .transition()
+      // .duration(1000)
+      .attr("x1", (d) => graphSettings.xScale(d))
+      .attr("x2", (d) => graphSettings.xScale(d));
 
     filterBySearch();
   }
 
-  function updateTitle(newTitle, newSubtitle) {
-    graphTitle.transition().duration(500).text(newTitle);
-    graphSubtitle.transition().duration(500).text(newSubtitle);
-  }
-
   function renderView() {
-    switch (filterLocation) {
+    switch (graphSettings.filterLocation) {
       case "National":
-        if (!inflationAdjust) {
-          redrawGraphLines(
-            dateScaleUnbound,
-            getDate,
-            salaryScale,
-            getSalary,
-            (d) => true
-          );
-          updateTitle("Amex Developer Pay", "\u00a0");
+        graphSettings.filter = (d) => true;
+        graphSettings.xScale = dateScaleFrom2012;
+        graphSettings.yScale = salaryScale;
+        graphSettings.title = "Amex Developer Pay";
+        if (!graphSettings.inflationAdjust) {
+          graphSettings.yAccessor = getSalary;
+          graphSettings.subtitle = "\u00a0";
+          graphSettings.tooltipSalary = "Nominal salary";
         } else {
-          redrawGraphLines(
-            dateScaleUnbound,
-            getDate,
-            salaryScale,
-            getAdjustedSalaryNational,
-            (d) => true
-          );
-          updateTitle("Amex Developer Pay", "Adjusted for national inflation");
+          graphSettings.yAccessor = getAdjustedSalaryNational;
+          graphSettings.subtitle =
+            "Adjusted for national inflation (Current dollars)";
+          graphSettings.tooltipSalary = "Real salary";
         }
         break;
+
       case "Miami":
-        if (!inflationAdjust) {
-          redrawGraphLines(
-            dateScaleUnbound,
-            getDate,
-            salaryScale,
-            getSalary,
-            (d) => d.location === "Miami"
-          );
-          updateTitle("Amex Developer Pay in Miami", "\u00a0");
+        graphSettings.filter = (d) => d.location === "Miami";
+        graphSettings.xScale = dateScaleFrom2012;
+        graphSettings.yScale = salaryScale;
+        graphSettings.title = "Amex Developer Pay in Miami";
+        if (!graphSettings.inflationAdjust) {
+          graphSettings.yAccessor = getSalary;
+          graphSettings.subtitle = "\u00a0";
+          graphSettings.tooltipSalary = "Nominal salary";
         } else {
-          redrawGraphLines(
-            dateScaleUnbound,
-            getDate,
-            salaryScale,
-            getAdjustedSalaryMetro,
-            (d) => d.location === "Miami"
-          );
-          updateTitle(
-            "Amex Developer Pay in Miami",
-            "Adjusted for local inflation"
-          );
+          graphSettings.yAccessor = getAdjustedSalaryMetro;
+          graphSettings.subtitle =
+            "Adjusted for local inflation (Current dollars)";
+          graphSettings.tooltipSalary = "Real salary";
         }
         break;
+
       case "New York":
-        if (!inflationAdjust) {
-          redrawGraphLines(
-            dateScaleUnbound,
-            getDate,
-            salaryScale,
-            getSalary,
-            (d) => d.location === "New York"
-          );
-          updateTitle("Amex Developer Pay in New York", "\u00a0");
+        graphSettings.filter = (d) => d.location === "New York";
+        graphSettings.xScale = dateScaleFrom2012;
+        graphSettings.yScale = salaryScale;
+        graphSettings.title = "Amex Developer Pay in New York";
+        if (!graphSettings.inflationAdjust) {
+          graphSettings.yAccessor = getSalary;
+          graphSettings.subtitle = "\u00a0";
+          graphSettings.tooltipSalary = "Nominal salary";
         } else {
-          redrawGraphLines(
-            dateScaleUnbound,
-            getDate,
-            salaryScale,
-            getAdjustedSalaryMetro,
-            (d) => d.location === "New York"
-          );
-          updateTitle(
-            "Amex Developer Pay in New York",
-            "Adjusted for local inflation"
-          );
+          graphSettings.yAccessor = getAdjustedSalaryMetro;
+          graphSettings.subtitle =
+            "Adjusted for local inflation (Current dollars)";
+          graphSettings.tooltipSalary = "Real salary";
         }
         break;
+
       case "Phoenix":
-        if (!inflationAdjust) {
-          redrawGraphLines(
-            dateScaleUnbound,
-            getDate,
-            salaryScale,
-            getSalary,
-            (d) => d.location === "Phoenix"
-          );
-          updateTitle("Amex Developer Pay in Phoenix", "\u00a0");
+        graphSettings.filter = (d) => d.location === "Phoenix";
+        graphSettings.xScale = dateScaleFrom2012;
+        graphSettings.yScale = salaryScale;
+        graphSettings.title = "Amex Developer Pay in Phoenix";
+        if (!graphSettings.inflationAdjust) {
+          graphSettings.yAccessor = getSalary;
+          graphSettings.subtitle = "\u00a0";
+          graphSettings.tooltipSalary = "Nominal salary";
         } else {
-          redrawGraphLines(
-            dateScaleUnbound,
-            getDate,
-            salaryScale,
-            getAdjustedSalaryMetro,
-            (d) => d.location === "Phoenix"
-          );
-          updateTitle(
-            "Amex Developer Pay in Phoenix",
-            "Adjusted for local inflation"
-          );
+          graphSettings.yAccessor = getAdjustedSalaryMetro;
+          graphSettings.subtitle =
+            "Adjusted for local inflation (Current dollars)";
+          graphSettings.tooltipSalary = "Real salary";
         }
         break;
+
       case "Other":
-        if (!inflationAdjust) {
-          redrawGraphLines(
-            dateScaleUnbound,
-            getDate,
-            salaryScale,
-            getSalary,
-            (d) =>
-              d.location !== "Phoenix" &&
-              d.location !== "Miami" &&
-              d.location !== "New York"
-          );
-          updateTitle("Amex Developer Pay in other cities", "\u00a0");
+        graphSettings.filter = (d) =>
+          d.location !== "Phoenix" &&
+          d.location !== "Miami" &&
+          d.location !== "New York";
+        graphSettings.xScale = dateScaleFrom2012;
+        graphSettings.yScale = salaryScale;
+        graphSettings.title = "Amex Developer Pay in other cities";
+
+        if (!graphSettings.inflationAdjust) {
+          graphSettings.yAccessor = getSalary;
+          graphSettings.subtitle = "\u00a0";
+          graphSettings.tooltipSalary = "Nominal salary";
         } else {
-          redrawGraphLines(
-            dateScaleUnbound,
-            getDate,
-            salaryScale,
-            getAdjustedSalaryNational,
-            (d) =>
-              d.location !== "Phoenix" &&
-              d.location !== "Miami" &&
-              d.location !== "New York"
-          );
-          updateTitle(
-            "Amex Developer Pay in other cities",
-            "Adjusted for national inflation"
-          );
+          graphSettings.yAccessor = getAdjustedSalaryNational;
+          graphSettings.subtitle =
+            "Adjusted for national inflation (Current dollars)";
+          graphSettings.tooltipSalary = "Real salary";
         }
         break;
     }
+
+    redrawGraphLines();
   }
 
   renderView();
@@ -478,7 +486,7 @@ function renderData(combinedData, referenceData) {
       text: "All",
       default: true,
       click: function () {
-        filterLocation = "National";
+        graphSettings.filterLocation = "National";
         renderView();
       },
     },
@@ -487,7 +495,7 @@ function renderData(combinedData, referenceData) {
       text: "Miami",
       default: false,
       click: function () {
-        filterLocation = "Miami";
+        graphSettings.filterLocation = "Miami";
         renderView();
       },
     },
@@ -496,7 +504,7 @@ function renderData(combinedData, referenceData) {
       text: "New York",
       default: false,
       click: function () {
-        filterLocation = "New York";
+        graphSettings.filterLocation = "New York";
         renderView();
       },
     },
@@ -505,7 +513,7 @@ function renderData(combinedData, referenceData) {
       text: "Phoenix",
       default: false,
       click: function () {
-        filterLocation = "Phoenix";
+        graphSettings.filterLocation = "Phoenix";
         renderView();
       },
     },
@@ -514,7 +522,7 @@ function renderData(combinedData, referenceData) {
       text: "Other",
       default: false,
       click: function () {
-        filterLocation = "Other";
+        graphSettings.filterLocation = "Other";
         renderView();
       },
     },
@@ -526,7 +534,7 @@ function renderData(combinedData, referenceData) {
       text: "No",
       default: true,
       click: function () {
-        inflationAdjust = false;
+        graphSettings.inflationAdjust = false;
         renderView();
       },
     },
@@ -535,7 +543,7 @@ function renderData(combinedData, referenceData) {
       text: "Yes",
       default: false,
       click: function () {
-        inflationAdjust = true;
+        graphSettings.inflationAdjust = true;
         renderView();
       },
     },
@@ -577,96 +585,50 @@ function renderData(combinedData, referenceData) {
     "inflationButtons",
     "Adjust for inflation?"
   );
+
   function filterBySearch() {
-    if (filterString === "") {
+    if (graphSettings.filterString === "") {
       d3.select("#graphLines")
         .selectAll("path")
         .attr("stroke-width", (d) => (d.id === "100K" ? 1.5 : 0.3));
-      delaunay = d3.Delaunay.from(
+      graphSettings.delaunay = d3.Delaunay.from(
         flattenedData,
-        (d) => dateScaleUnbound(getDate(d)),
-        (d) => salaryScale(getSalary(d))
+        (d) => graphSettings.xScale(graphSettings.xAccessor(d)),
+        (d) => graphSettings.yScale(graphSettings.yAccessor(d))
       );
+      graphSettings.filteredData = flattenedData;
     } else {
       d3.select("#graphLines")
         .selectAll("path")
         .attr("stroke-width", (d) => {
-          return d.id.toLowerCase().includes(filterString) || d.id === "100K"
+          return d.id.toLowerCase().includes(graphSettings.filterString) ||
+            d.id === "100K"
             ? 1.5
             : 0.1;
         });
-      delaunay = d3.Delaunay.from(
-        flattenedData.filter((d) => d.id.toLowerCase().includes(filterString)),
-        (d) => dateScaleUnbound(getDate(d)),
-        (d) => salaryScale(getSalary(d))
+      graphSettings.delaunay = d3.Delaunay.from(
+        flattenedData.filter((d) =>
+          d.id.toLowerCase().includes(graphSettings.filterString)
+        ),
+        (d) => graphSettings.xScale(graphSettings.xAccessor(d)),
+        (d) => graphSettings.yScale(graphSettings.yAccessor(d))
+      );
+      graphSettings.filteredData = flattenedData.filter((d) =>
+        d.id.toLowerCase().includes(graphSettings.filterString)
       );
     }
+    return;
   }
 
-  d3.select("#search").on("keyup", function (d) {
-    filterString = $(this).val().toLowerCase();
+  function onSearch() {
+    graphSettings.filterString = $(this).val().toLowerCase();
     filterBySearch();
-  });
-  d3.select("#search").on("paste", function (d) {
-    filterString = $(this).val().toLowerCase();
-    filterBySearch();
-  });
-  d3.select("#search").on("change", function (d) {
-    filterString = $(this).val().toLowerCase();
-    filterBySearch();
-  });
+  }
 
-  d3.select("body").append("br");
-  d3.select("body").append("h3").text("Notes");
-  d3.select("body")
-    .append("p")
-    .text(
-      "This data is sourced from the Buraeu of Labor Statistics, the agency tasked with tracking inflation in the United States."
-    );
-  d3.select("body")
-    .append("p")
-    .text(
-      "When inflation is shown, is uses regional data when cities are selected or national data otherwise"
-    );
-  d3.select("body")
-    .append("p")
-    .text(
-      "Inflation is scaled to CURRENT dollars. You will see how every dollar went further in the past, and how long stretches without a pay increase devalue over time."
-    );
-  d3.select("body")
-    .append("p")
-    .text(
-      "Inflation from April 2021 to April 2022 (the most recent data) was 8.6% nationally, 6.3% in New York, 9.6% in Miami, and 11% in Phoenix."
-    );
-  d3.select("body")
-    .append("p")
-    .text("The red line is a reference line at $100,000");
-
-  // html`<style>
-  //   .flex {
-  //     display: flex;
-  //     justify-content: space-between;
-  //   }
-  //   .flex:not(:last-child) {
-  //     border-bottom: 1px solid #eee;
-  //     margin-bottom: 2px;
-  //   }
-  // </style>`;
+  d3.select("#search")
+    .on("keyup", onSearch)
+    .on("paste", onSearch)
+    .on("change", onSearch);
 }
 
 init();
-
-// width: 200px; position: absolute; padding: 8px; border: 1px solid rgb(204, 204, 204); pointer-events: none; background: white; display: none; left: 554px; top: 268.195px;
-// width: 200px; position: absolute; padding: 8px; border: 1px solid rgb(204, 204, 204); pointer-events: none; background: white; display: block; left: 648px; top: 123.195px;
-// width: 200px; position: absolute; padding: 8px; border: 1px solid rgb(204, 204, 204); pointer-events: none; background: white; display: none; left: 549px; top: 168.406px;"
-
-// div displaying correctly
-// width: 200px;
-// position: absolute;
-// padding: 8px;
-// border: 1px solid rgb(204, 204, 204);
-// pointer-events: none;
-// background: white;
-// display: block;
-// left: 474px;
-// top: 282.195px;

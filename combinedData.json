@@ -1,1 +1,118 @@
-[{"id": "27UUN07S", "education": "Bachelor’s degree", "hiring_source": "0", "previous_experience": "Campus Recruitment—Return offer from internship", "location": "Phoenix", "values": [{"date_string": "2020-08-24", "salary": 77500.0, "interpolated": false, "salary_metro_adjusted": 89466.85, "salary_national_adjusted": 86203.91}, {"date_string": "2021-11-01", "salary": 77500.0, "interpolated": true, "salary_metro_adjusted": 83288.82, "salary_national_adjusted": 80612.01}, {"date_string": "2021-11-01", "salary": 79825.0, "interpolated": false, "salary_metro_adjusted": 85787.48, "salary_national_adjusted": 83030.37}, {"date_string": "2022-02-01", "salary": 79825.0, "interpolated": true, "salary_metro_adjusted": 82631.03, "salary_national_adjusted": 81342.35}, {"date_string": "2022-02-01", "salary": 85412.75, "interpolated": false, "salary_metro_adjusted": 88415.2, "salary_national_adjusted": 87036.31}, {"date_string": "2022-03-01", "salary": 85412.75, "interpolated": true, "salary_metro_adjusted": 87309.54, "salary_national_adjusted": 85889.57}, {"date_string": "2022-03-01", "salary": 89683.39, "interpolated": false, "salary_metro_adjusted": 91675.02, "salary_national_adjusted": 90184.05}, {"date_string": "2022-03-29", "salary": 89683.39, "interpolated": true, "salary_metro_adjusted": 91675.02, "salary_national_adjusted": 90184.05}, {"date_string": "2022-03-29", "salary": 94167.56, "interpolated": false, "salary_metro_adjusted": 96258.77, "salary_national_adjusted": 94693.25}, {"date_string": "2022-05-26", "salary": 94167.56, "interpolated": true, "salary_metro_adjusted": 94167.56, "salary_national_adjusted": 94167.56}]}, {"id": "ZNk3Ubta", "education": "Bachelor’s degree", "hiring_source": "0", "previous_experience": "Campus Recruitment—Return offer from internship", "location": "Phoenix", "values": [{"date_string": "2021-08-16", "salary": 77500.0, "interpolated": false, "salary_metro_adjusted": 85086.82, "salary_national_adjusted": 81902.96}, {"date_string": "2021-11-01", "salary": 77500.0, "interpolated": true, "salary_metro_adjusted": 83288.82, "salary_national_adjusted": 80612.01}, {"date_string": "2021-11-01", "salary": 85250.0, "interpolated": false, "salary_metro_adjusted": 91617.7, "salary_national_adjusted": 88673.21}, {"date_string": "2022-05-26", "salary": 85250.0, "interpolated": true, "salary_metro_adjusted": 85250.0, "salary_national_adjusted": 85250.0}]}]
+[
+  {
+    "id": "27UUN07S",
+    "education": "Bachelor’s degree",
+    "hiring_source": "0",
+    "previous_experience": "Campus Recruitment—Return offer from internship",
+    "location": "Phoenix",
+    "values": [
+      {
+        "date_string": "2020-08-24",
+        "salary": 77500.0,
+        "interpolated": false,
+        "salary_metro_adjusted": 89466.85,
+        "salary_national_adjusted": 86203.91
+      },
+      {
+        "date_string": "2021-11-01",
+        "salary": 77500.0,
+        "interpolated": true,
+        "salary_metro_adjusted": 83288.82,
+        "salary_national_adjusted": 80612.01
+      },
+      {
+        "date_string": "2021-11-01",
+        "salary": 79825.0,
+        "interpolated": false,
+        "salary_metro_adjusted": 85787.48,
+        "salary_national_adjusted": 83030.37
+      },
+      {
+        "date_string": "2022-02-01",
+        "salary": 79825.0,
+        "interpolated": true,
+        "salary_metro_adjusted": 82631.03,
+        "salary_national_adjusted": 81342.35
+      },
+      {
+        "date_string": "2022-02-01",
+        "salary": 85412.75,
+        "interpolated": false,
+        "salary_metro_adjusted": 88415.2,
+        "salary_national_adjusted": 87036.31
+      },
+      {
+        "date_string": "2022-03-01",
+        "salary": 85412.75,
+        "interpolated": true,
+        "salary_metro_adjusted": 87309.54,
+        "salary_national_adjusted": 85889.57
+      },
+      {
+        "date_string": "2022-03-01",
+        "salary": 89683.39,
+        "interpolated": false,
+        "salary_metro_adjusted": 91675.02,
+        "salary_national_adjusted": 90184.05
+      },
+      {
+        "date_string": "2022-03-29",
+        "salary": 89683.39,
+        "interpolated": true,
+        "salary_metro_adjusted": 91675.02,
+        "salary_national_adjusted": 90184.05
+      },
+      {
+        "date_string": "2022-03-29",
+        "salary": 94167.56,
+        "interpolated": false,
+        "salary_metro_adjusted": 96258.77,
+        "salary_national_adjusted": 94693.25
+      },
+      {
+        "date_string": "2022-05-26",
+        "salary": 94167.56,
+        "interpolated": true,
+        "salary_metro_adjusted": 94167.56,
+        "salary_national_adjusted": 94167.56
+      }
+    ]
+  },
+  {
+    "id": "ZNk3Ubta",
+    "education": "Bachelor’s degree",
+    "hiring_source": "0",
+    "previous_experience": "Campus Recruitment—Return offer from internship",
+    "location": "Phoenix",
+    "values": [
+      {
+        "date_string": "2021-08-16",
+        "salary": 77500.0,
+        "interpolated": false,
+        "salary_metro_adjusted": 85086.82,
+        "salary_national_adjusted": 81902.96
+      },
+      {
+        "date_string": "2021-11-01",
+        "salary": 77500.0,
+        "interpolated": true,
+        "salary_metro_adjusted": 83288.82,
+        "salary_national_adjusted": 80612.01
+      },
+      {
+        "date_string": "2021-11-01",
+        "salary": 85250.0,
+        "interpolated": false,
+        "salary_metro_adjusted": 91617.7,
+        "salary_national_adjusted": 88673.21
+      },
+      {
+        "date_string": "2022-05-26",
+        "salary": 85250.0,
+        "interpolated": true,
+        "salary_metro_adjusted": 85250.0,
+        "salary_national_adjusted": 85250.0
+      }
+    ]
+  }
+]
