@@ -103,6 +103,111 @@ function renderData(combinedData, referenceData) {
     .attr("transform", "translate(50, 0)")
     .call(yAxis);
 
+  var flattenedData = [];
+  combinedData.forEach((entry) => {
+    entry.values.forEach((payDatum) => {
+      flattenedData.push({
+        id: entry.id,
+        education: entry.education,
+        hiring_source: entry.hiring_source,
+        // interpolated: payDatum.interpolated,
+        date: payDatum.date,
+        salary: payDatum.salary,
+        salary_metro_adjusted: payDatum.salary_metro_adjusted,
+        salary_national_adjusted: payDatum.salary_national_adjusted,
+      });
+    });
+  });
+  // console.log(flattenedData);
+  // delaunay = d3.Delaunay.from(
+  //   flattenedData,
+  //   (d) => dateScaleUnbound(getDate(d)),
+  //   (d) => salaryScale(getSalary(d))
+  // );
+
+  // console.log(delaunay);
+
+  let hover;
+
+  let highlight = graph
+    .append("circle")
+    // .attr("opacity", hover ? 1 : 0)
+    .attr("opacity", 0)
+    .attr("r", 3)
+    // .attr("stroke-width", 2)
+    .attr("fill", "black")
+    // .attr("stroke", "black")
+    // .attr("cx", hover ? dateScaleUnbound(hover.date) : null)
+    .attr("cx", null)
+    // .attr("cy", hover ? salaryScale(hover.salary) : null);
+    .attr("cy", null);
+
+  function mousemoved() {
+    const [mx, my] = d3.mouse(d3.select(this).node());
+
+    hover = find(mx, my);
+
+    if (!hover) {
+      highlight.attr("opacity", 0);
+      return mouseleft();
+    }
+
+    const xRatio = mx / width;
+
+    tooltip
+      .style("display", "block")
+      .style(
+        "left",
+        `${xRatio > 0.75 ? mx - 100 : xRatio < 0.15 ? mx + 100 : mx}px`
+      )
+      .style("top", `${my + 230}px`)
+      .html(
+        `<div>
+          <strong>${hover.id}</strong>
+        </div>
+          <div class="flex">
+          <div>${d3.timeFormat("%B %d, %Y")(hover.date)}</div>
+          <div>${d3.format("$.0f")(hover.salary)}</div>
+        </div>`
+      );
+
+    highlight
+      .attr("opacity", 1)
+      .attr("cx", dateScaleUnbound(hover.date))
+      .attr("cy", salaryScale(hover.salary));
+    // .html(`<h1>Here</h1>`);
+  }
+
+  find = (mx, my) => {
+    const idx = delaunay.find(mx, my);
+
+    if (idx !== null) {
+      const datum = flattenedData[idx];
+      const d = distance(
+        dateScaleUnbound(datum.date),
+        salaryScale(datum.salary),
+        mx,
+        my
+      );
+
+      return d < 100 ? datum : null;
+    }
+
+    return null;
+  };
+
+  distance = (px, py, mx, my) => {
+    const a = px - mx;
+    const b = py - my;
+
+    return Math.sqrt(a * a + b * b);
+  };
+
+  mouseleft = () => {
+    tooltip.style("display", "none");
+  };
+  // Transparent rect for interaction
+
   grid = (g) => {
     g.attr("stroke", "currentColor")
       .attr("stroke-opacity", 0.1)
@@ -130,7 +235,19 @@ function renderData(combinedData, referenceData) {
       );
   };
 
+  // tooltip = {
+  //   const div = d3.create('div')
+  // }
+
   graph.append("g").call(grid);
+
+  graph
+    .append("rect")
+    .attr("fill", "transparent")
+    .attr("width", width)
+    .attr("height", height)
+    .on("mousemove", mousemoved)
+    .on("mouseleave", mouseleft);
 
   let filterLocation = "National";
   let inflationAdjust = false;
@@ -143,8 +260,20 @@ function renderData(combinedData, referenceData) {
 
   // .selectAll("path")
   // .data(combinedData);
+  tooltip = d3
+    .select("#tooltip")
+    // .select("#graph")
+    // .append("div")
+    // .attr("id", "tooltip")
+    .style("width", "200px")
+    // .style("height", "200px")
+    .style("position", "absolute")
+    .style("padding", "8px")
+    .style("border", "1px solid #ccc")
+    .style("pointer-events", "none")
+    .style("background", "white")
+    .style("display", "none");
 
-  console.log([referenceData]);
   graph
     .append("g")
     .attr("id", "referenceLines")
@@ -453,15 +582,24 @@ function renderData(combinedData, referenceData) {
       d3.select("#graphLines")
         .selectAll("path")
         .attr("stroke-width", (d) => (d.id === "100K" ? 1.5 : 0.3));
+      delaunay = d3.Delaunay.from(
+        flattenedData,
+        (d) => dateScaleUnbound(getDate(d)),
+        (d) => salaryScale(getSalary(d))
+      );
     } else {
       d3.select("#graphLines")
         .selectAll("path")
         .attr("stroke-width", (d) => {
-          console.log(d);
           return d.id.toLowerCase().includes(filterString) || d.id === "100K"
             ? 1.5
             : 0.1;
         });
+      delaunay = d3.Delaunay.from(
+        flattenedData.filter((d) => d.id.toLowerCase().includes(filterString)),
+        (d) => dateScaleUnbound(getDate(d)),
+        (d) => salaryScale(getSalary(d))
+      );
     }
   }
 
@@ -503,6 +641,32 @@ function renderData(combinedData, referenceData) {
   d3.select("body")
     .append("p")
     .text("The red line is a reference line at $100,000");
+
+  // html`<style>
+  //   .flex {
+  //     display: flex;
+  //     justify-content: space-between;
+  //   }
+  //   .flex:not(:last-child) {
+  //     border-bottom: 1px solid #eee;
+  //     margin-bottom: 2px;
+  //   }
+  // </style>`;
 }
 
 init();
+
+// width: 200px; position: absolute; padding: 8px; border: 1px solid rgb(204, 204, 204); pointer-events: none; background: white; display: none; left: 554px; top: 268.195px;
+// width: 200px; position: absolute; padding: 8px; border: 1px solid rgb(204, 204, 204); pointer-events: none; background: white; display: block; left: 648px; top: 123.195px;
+// width: 200px; position: absolute; padding: 8px; border: 1px solid rgb(204, 204, 204); pointer-events: none; background: white; display: none; left: 549px; top: 168.406px;"
+
+// div displaying correctly
+// width: 200px;
+// position: absolute;
+// padding: 8px;
+// border: 1px solid rgb(204, 204, 204);
+// pointer-events: none;
+// background: white;
+// display: block;
+// left: 474px;
+// top: 282.195px;
